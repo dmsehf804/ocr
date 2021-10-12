@@ -29,6 +29,7 @@ public class ImageUtils {
         PointF leftBottom = null;
         PointF rightBottom = null;
 
+
         for (int i = 0; i < points.size(); i++) {
             PointF point = points.get(i);
 
@@ -71,6 +72,7 @@ public class ImageUtils {
             min_y = Math.min(min_y, point.y);
             max_x = Math.max(max_x, point.x);
             max_y = Math.max(max_y, point.y);
+            System.out.println("51241234124124");
         }
 
         return new RectF(min_x, min_y, max_x, max_y);
@@ -207,11 +209,11 @@ public class ImageUtils {
         if (source == null || boundingBox == null)
             return source;
 
-        try {
-            return Bitmap.createBitmap(source, (int) boundingBox.left, (int) boundingBox.top, (int) boundingBox.width(), (int) boundingBox.height());
-        }
-        catch (Exception ex) {
-            return source;
-        }
+        System.out.println(source.getWidth());
+        System.out.println(boundingBox.height());
+        System.out.println(boundingBox.width());
+        return Bitmap.createBitmap(source, (int) boundingBox.left, (int) boundingBox.top, (int) boundingBox.width(), (int) boundingBox.height());
+
+
     }
 }

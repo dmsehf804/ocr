@@ -200,7 +200,7 @@ public abstract class CameraActivity extends AppCompatActivity
                 previewHeight = previewSize.height;
                 previewWidth = previewSize.width;
                 rgbBytes = new int[previewWidth * previewHeight];
-                onPreviewSizeChosen(new Size(previewSize.width, previewSize.height), 90);
+                onPreviewSizeChosen(new Size(previewSize.width, previewSize.height), 180);
             }
         } catch (final Exception e) {
             LOGGER.e(e, "Exception!");

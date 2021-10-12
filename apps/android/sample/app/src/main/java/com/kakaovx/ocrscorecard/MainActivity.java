@@ -35,7 +35,7 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
 
     // Minimum detection confidence to track a detection.
     //private static final Size DESIRED_PREVIEW_SIZE = new Size(640, 480);
-    private static final Size DESIRED_PREVIEW_SIZE = new Size(1920, 1440);
+    private static final Size DESIRED_PREVIEW_SIZE = new Size(640, 480);
     private static final float TEXT_SIZE_DIP = 10;
     OverlayView trackingOverlay;
     private Integer sensorOrientation;
@@ -56,9 +56,9 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
 
     private Paint paint = null;
     private final Object lockPoints = new Object();
-
+    private Bitmap bitmap;
     private boolean isAffine = false;
-
+    private Pair<Bitmap, ArrayList<PointF>> pair;
     @Override
     protected void onCreateActivity() {
         super.onCreateActivity();
@@ -101,20 +101,22 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
 
         trackingOverlay = (OverlayView) findViewById(R.id.tracking_overlay);
         trackingOverlay.addCallback(canvas -> {
-            int imageWidth = detector.isRotated(sensorOrientation) ? previewHeight : previewWidth;
-            int imageHeight = detector.isRotated(sensorOrientation) ? previewWidth : previewHeight;
-
-            float scalePreview = Math.min(canvas.getWidth() / (float)imageWidth, canvas.getHeight() / (float)imageHeight);
-
+//
             ArrayList<PointF> adjusted = new ArrayList<>();
-            synchronized (lockPoints) {
-                if (points != null) {
-                    for (int i = 0; i < points.size(); i++) {
-                        adjusted.add(new PointF(
-                                (points.get(i).x - imageWidth / 2) * scalePreview + canvas.getWidth() / 2,
-                                (points.get(i).y - imageHeight / 2) * scalePreview + canvas.getHeight() / 2));
-                    }
-                }
+            adjusted.add(new PointF(300,100));
+            adjusted.add(new PointF(1000,100));
+            adjusted.add(new PointF(1000,400));
+            adjusted.add(new PointF(300,400));
+
+            bitmap = detector.cropScorecardBitmap(rgbFrameBitmap,new RectF(200, 100, 600, 300) );
+            if (bitmap != null) {
+                System.out.println(rgbFrameBitmap.getWidth());
+                System.out.println(bitmap.getWidth());
+                System.out.println("555555");
+//                bitmap.setPixels(rgbFrameBitmap,0,200,0,0,200,100);
+                float ratio = bitmap.getWidth() / (float)bitmap.getHeight();
+                System.out.println(ratio);
+                canvas.drawBitmap(bitmap, null, new RectF(300, 0, 512 * ratio, 256), null);
             }
             detector.drawScorecardBox(canvas, adjusted, 5, Color.RED);
         });
@@ -126,7 +128,7 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
     protected void processImage() {
         ++timestamp;
         final long currTimestamp = timestamp;
-        trackingOverlay.postInvalidate();
+
 
         // No mutex needed as this method is not reentrant.
         if (computingDetection) {
@@ -134,38 +136,28 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
             return;
         }
         computingDetection = true;
-        LOGGER.i("Preparing image " + currTimestamp + " for detection in bg thread.");
 
         synchronized (lockFrameBitmap) {
             rgbFrameBitmap.setPixels(getRgbBytes(), 0, previewWidth, 0, 0, previewWidth, previewHeight);
+
         }
 
         readyForNextImage();
-
         runInBackground(() -> {
-            LOGGER.i("Running detection on image " + currTimestamp);
+
             final long startTime = SystemClock.uptimeMillis();
-
-            ArrayList<PointF> _points = detector.inference(rgbFrameBitmap, sensorOrientation, false);
-
-            if (_points != null) {
-                synchronized (lockPoints) {
-                    points = _points;
-                }
-            }
 
             lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
 
-            trackingOverlay.postInvalidate();
 
             computingDetection = false;
 
             runOnUiThread(() -> {
                 showFrameInfo(previewWidth + "x" + previewHeight);
-                showCropInfo(detector.getInputWidth() + "x" + detector.getInputHeight());
                 showInference(lastProcessingTimeMs + "ms");
             });
         });
+
     }
 
     @Override
@@ -193,7 +185,7 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
     }
 
     private ScoreCard sendScorecardImage() {
-        if (rgbFrameBitmap == null) {
+        if (bitmap == null) {
             runOnUiThread(() -> Toast.makeText(MainActivity.this, "Invalid camera preview", Toast.LENGTH_SHORT).show());
             return null;
         }
@@ -201,19 +193,15 @@ public class MainActivity extends CameraActivity implements OnImageAvailableList
         Bitmap bitmapScorecard = null;
         ArrayList<PointF> _points = null;
         synchronized (lockFrameBitmap) {
-            bitmapScorecard = rgbFrameBitmap.copy(rgbFrameBitmap.getConfig(), true);
+            bitmapScorecard = bitmap.copy(bitmap.getConfig(), true);
         }
 
         if ( bitmapScorecard == null) {
             return null;
         }
-        synchronized (lockPoints) {
-
-            _points = new ArrayList<>(points);
-        }
 
         try {
-            return detector.sendScorecard(bitmapScorecard, _points,"kakaovx01", "ryon");
+            return detector.sendScorecard(bitmapScorecard, "kakaovx01", "ryon");
         }
         catch (Exception ex) {
             ex.printStackTrace();
